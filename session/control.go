@@ -10,7 +10,7 @@ import (
 
 // BroadcastData holds data to be broadcasted and the origin
 type BroadcastData struct {
-	Origin  string
+	UserID  string
 	Content []byte
 }
 
@@ -26,7 +26,7 @@ type ControlBlock struct {
 	SignalClose chan struct{}
 
 	// Active Connections
-	Clients    map[string]*gws.Conn
+	Clients    map[string]*types.User
 	NumClients int
 	Mu         sync.Mutex
 }
@@ -39,7 +39,7 @@ func NewControlBlock(sessionID string) *ControlBlock {
 		Echo:        make(chan *BroadcastData),
 		DBUpdate:    make(chan []*types.Stroke),
 		SignalClose: make(chan struct{}),
-		Clients:     make(map[string]*gws.Conn),
+		Clients:     make(map[string]*types.User),
 		NumClients:  0,
 	}
 
@@ -56,17 +56,17 @@ func (scb *ControlBlock) broadcast() {
 		select {
 		case data := <-scb.Broadcast:
 			scb.Mu.Lock()
-			for addr, clientConn := range scb.Clients { // Send to all connected clients
+			for userID, user := range scb.Clients { // Send to all connected clients
 				// except the origin, i.e. the initiator of message
-				if addr != data.Origin {
-					clientConn.WriteMessage(gws.TextMessage, data.Content) // ignore error
+				if userID != data.UserID {
+					user.Conn.WriteMessage(gws.TextMessage, data.Content) // ignore error
 				}
 			}
 			scb.Mu.Unlock()
 		case data := <-scb.Echo:
 			// echo message back to origin
 			scb.Mu.Lock()
-			scb.Clients[data.Origin].WriteMessage(gws.TextMessage, data.Content)
+			scb.Clients[data.UserID].Conn.WriteMessage(gws.TextMessage, data.Content)
 			scb.Mu.Unlock()
 		case <-scb.SignalClose:
 			return

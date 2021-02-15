@@ -220,10 +220,12 @@ func SanitizeStrokes(sessionID string, strokes []types.Stroke) ([]*types.Stroke,
 	pageIDs := GetPagesSet(sessionID)
 
 	for i := range strokes {
-		if _, ok := pageIDs[strokes[i].GetPageID()]; ok {
-			strokesSanitized = append(strokesSanitized, &strokes[i])
-			if strokes[i].Type >= 0 {
-				strokesDB = append(strokesDB, &strokes[i])
+		if _, ok := pageIDs[strokes[i].GetPageID()]; ok { // valid pageID
+			if _, userOK := ActiveSession[sessionID].Clients[strokes[i].GetUserID()]; userOK { // valid userID
+				strokesSanitized = append(strokesSanitized, &strokes[i])
+				if strokes[i].Type >= 0 {
+					strokesDB = append(strokesDB, &strokes[i])
+				}
 			}
 		}
 	}
